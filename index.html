@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Slipstream Tuner</title>
+    <style>
+        body { background-color: #000; color: #c9d1d9; font-family: 'Courier New', Courier, monospace; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; overflow-y: auto; overflow-x: hidden; padding-bottom: 20px; }
+        
+        /* CLEAN INSTRUCTIONAL SPLASH SCREEN */
+        #welcome-splash { display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5, 5, 5, 0.95); z-index: 99999; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; box-sizing: border-box; backdrop-filter: blur(5px); }
+        .splash-btn { padding: 20px 40px; font-size: 1.5rem; background: #00ffcc; color: #000; border: none; cursor: pointer; font-weight: bold; margin-top: 30px; border-radius: 8px; box-shadow: 0 0 30px rgba(0, 255, 204, 0.4); font-family: 'Courier New', monospace; transition: 0.2s; }
+        .splash-btn:hover { transform: scale(1.05); box-shadow: 0 0 50px rgba(0, 255, 204, 0.8); }
+
+        #hud { width: 100%; background-color: #000; padding: 10px; text-align: center; border-bottom: 3px solid #00ffcc; box-shadow: 0 0 15px rgba(0, 255, 204, 0.2); z-index: 10; min-height: 120px; display: flex; flex-direction: column; justify-content: center; }
+        #hud-normal-view { display: flex; justify-content: space-around; width: 100%; align-items: center; flex-wrap: wrap; gap: 10px; }
+        #hud-feedback-view { display: none; width: 100%; text-align: center; }
+        
+        .hud-data { font-size: 4rem; font-weight: bold; color: #00ffcc; text-shadow: 0 0 10px rgba(0, 255, 204, 0.5); }
+        .hud-label { font-size: 1.2rem; color: #ffffff; font-weight: bold; display: block; margin-bottom: -10px; text-transform: uppercase; letter-spacing: 2px; }
+        .hud-small { font-size: 1.1rem; color: #ffffff; font-weight: bold; text-align: left; line-height: 1.4; }
+        .hud-bottom-row { display: flex; justify-content: center; gap: 20px; width: 100%; margin-top: 10px; flex-wrap: wrap; }
+        
+        @keyframes pulseGold { 0% { text-shadow: 0 0 10px #ffcc00; transform: scale(1); } 50% { text-shadow: 0 0 30px #ffcc00, 0 0 50px #ffffff; transform: scale(1.05); } 100% { text-shadow: 0 0 10px #ffcc00; transform: scale(1); } }
+        .high-score-text { animation: pulseGold 0.5s infinite; color: #ffcc00 !important; }
+        
+        #main-area { display: flex; flex-direction: row; justify-content: center; align-items: flex-start; gap: 15px; width: 100%; max-width: 1200px; margin-top: 15px; flex-wrap: wrap; }
+        
+        .side-panel { width: 130px; background-color: #161b22; border: 2px solid #30363d; border-radius: 8px; padding: 8px; box-shadow: 0 0 15px rgba(0,0,0,0.8); text-align: center; z-index: 20; }
+        .hidden-panel { display: none; }
+        
+        #left-panel h3, #right-panel h3 { font-size: 0.9rem; margin-top: 0; margin-bottom: 8px; }
+        #mic-status-dot { width: 20px; height: 20px; border-radius: 50%; background-color: #ff0000; margin: 5px auto; }
+        
+        #gameCanvas { background-color: #050505; border: 3px solid #444; border-radius: 8px; width: 100%; max-width: 800px; aspect-ratio: 8 / 3; }
+        
+        #score-board { margin-top: 10px; font-size: 2.8rem; font-weight: bold; color: #fff; display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap; }
+        #mult-display { font-size: 1.5rem; color: #00ffcc; padding: 5px 10px; border: 2px solid #00ffcc; border-radius: 8px; transition: 0.2s; font-weight: 900;}
+        
+        #hardware-controls { display: flex; gap: 10px; margin-top: 15px; align-items: center; justify-content: center; width: 100%; flex-wrap: wrap; }
+        button, select { padding: 10px 15px; font-size: 1rem; background-color: #00ffcc; color: #000; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-family: 'Courier New', monospace; }
+        select { background-color: #21262d; color: #fff; border: 1px solid #30363d; }
+        input[type=range] { width: 100%; margin: 5px 0; }
+        
+        .target-arrow { background: #21262d; color: #00ffcc; border: 1px solid #30363d; padding: 2px 8px; cursor: pointer; font-weight: bold; margin: 0 5px; font-size: 1rem; }
+        .target-arrow:hover { background: #30363d; }
+        
+        #help-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 100; justify-content: center; align-items: center; }
+        .help-content { background: #161b22; border: 2px solid #00ffcc; border-radius: 8px; padding: 30px; max-width: 600px; color: #fff; text-align: left; box-shadow: 0 0 30px rgba(0, 255, 204, 0.2); }
+        .help-content h2 { color: #00ffcc; margin-top: 0; text-align: center; letter-spacing: 2px; }
+        .help-content ul { line-height: 1.8; font-size: 1.1rem; }
+        .help-content li { margin-bottom: 10px; }
+        .close-help { background: #ff0033; color: #fff; border: none; padding: 10px 20px; font-weight: bold; cursor: pointer; border-radius: 4px; float: right; margin-top: 15px; width: 100%; }
+        .close-help:hover { background: #cc0029; }
+    </style>
+</head>
+<body>
+
+    <div id="welcome-splash">
+        <h1 style="color:#00ffcc; font-size: 4rem; margin-bottom: 10px; letter-spacing: 5px;">SLIPSTREAM</h1>
+        <h2 style="color:#ffaa00; margin-top: 0; font-size: 2rem;">MICROPHONE REQUIRED</h2>
+        <p style="font-size: 1.2rem; max-width: 600px; line-height: 1.6; color: #c9d1d9;">This app requires access to your microphone to hear your instrument. <br><br>When you click "Initialize Audio" on the next screen, your browser will ask for permission. You must click <b>Allow</b> to play!</p>
+        <button class="splash-btn" id="dismiss-splash-btn">PROCEED TO GAME</button>
+    </div>
+
+    <div id="hud">
+        <div id="hud-normal-view">
+            <div style="display: flex; flex-direction: column; align-items: center;">
+                <span class="hud-label">PITCH</span>
+                <span id="pitch-display" class="hud-data">--</span>
+                <span id="pitch-concert-display" style="font-size: 1.1rem; color: #8b949e; font-weight: bold; margin-top: -5px; min-height: 1.2rem;"></span>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: center;">
+                <span class="hud-label">CENTS</span>
+                <span id="cents-display" class="hud-data">--</span>
+                <span style="font-size: 1.1rem; min-height: 1.2rem;"></span>
+            </div>
+        </div>
+        <div id="hud-feedback-view">
+             <span id="feedback-display" class="hud-data">--</span>
+        </div>
+        <div class="hud-bottom-row">
+            <div class="hud-small"><div>MODE: <span id="mode-display" style="color:#00ff00">GAME</span></div>
+            <div>TARGET: 
+                <button class="target-arrow" id="btn-target-down">&lt;</button>
+                <span id="target-note-display" style="color:#fff">Bb</span>
+                <button class="target-arrow" id="btn-target-up">&gt;</button>
+                <span id="target-concert-display" style="color:#8b949e; font-size: 0.9rem; margin-left: 5px;"></span>
+            </div></div>
+            <div class="hud-small">
+                 <div>DIFFICULTY: 
+                    <button class="target-arrow" id="btn-diff-down">&lt;</button>
+                    <span id="difficulty-name-display" style="color:#fff">NOVICE</span> <span style="color:#ff0000">(&plusmn;<span id="difficulty-display">15</span>c)</span>
+                    <button class="target-arrow" id="btn-diff-up">&gt;</button>
+                 </div>
+                 <div>FUEL: <span id="air-display" style="color:#00ffcc">100%</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="main-area">
+        <div id="left-panel" class="side-panel hidden-panel">
+            <h3>SETTINGS</h3>
+            <div id="mic-status-dot"></div>
+            <div style="font-size:0.7rem; color:#888;">MIC SENS:</div>
+            <input type="range" id="sens-slider" min="0.1" max="10.0" step="0.1" value="0.5">
+            <div style="color:#00ffcc; font-weight:bold; font-size:0.9rem;"><span id="sens-display">0.5</span></div>
+            <hr style="border:0; border-top:1px solid #444; margin:10px 0;">
+            <div style="font-size:0.7rem; color:#888;">SPEED:</div>
+            <input type="range" id="speed-slider" min="0.5" max="2.5" step="0.1" value="1.0">
+            <div style="color:#00ffcc; font-weight:bold; font-size:0.9rem;"><span id="speed-display">1.0</span>x</div>
+        </div>
+        
+        <canvas id="gameCanvas" width="800" height="300"></canvas>
+        
+        <div id="right-panel" class="side-panel">
+            <h3 style="color:#00ffcc; margin-bottom: 2px;">TOP SCORES</h3>
+            <ul id="top-scores-list" style="list-style:none; padding:0; margin:0; font-size: 1.2rem; font-weight: bold; color: #fff;"></ul>
+        </div>
+    </div>
+
+    <div id="score-board">
+        <div>SCORE: <span id="score-val">0</span></div>
+        <div id="mult-display">1x BONUS</div>
+    </div>
+    
+    <div id="hardware-controls">
+        <button id="help-btn" style="background-color: #ffaa00;">[?] HELP</button>
+        <button id="app-mode-btn" style="background-color: #aa00ff; color: #fff;">MODE: RACE</button>
+        <button id="toggle-mic-btn">⚙️ SETTINGS [S]</button>
+        <select id="inst-select">
+            <option value="concert">Concert Pitch (Whole Band)</option>
+            <option value="alto_sax">Alto Saxophone</option>
+            <option value="baritone_bc">Baritone (Bass Clef)</option>
+            <option value="baritone_tc">Baritone (Treble Clef)</option>
+            <option value="bari_sax">Baritone Saxophone</option>
+            <option value="bass_clarinet">Bass Clarinet</option>
+            <option value="bassoon">Bassoon</option>
+            <option value="clarinet">Clarinet</option>
+            <option value="flute">Flute</option>
+            <option value="horn">French Horn</option>
+            <option value="oboe">Oboe</option>
+            <option value="tenor_sax">Tenor Saxophone</option>
+            <option value="trombone">Trombone</option>
+            <option value="trumpet">Trumpet</option>
+            <option value="tuba">Tuba</option>
+        </select>
+        <select id="mic-select"><option>Loading Mics...</option></select>
+        <button id="start-btn">INITIALIZE AUDIO</button>
+    </div>
+
+    <div id="help-modal">
+        <div class="help-content">
+            <h2>HOW TO PLAY SLIPSTREAM</h2>
+            <ul>
+                <li><strong>Mic Permissions:</strong> When your browser asks, you MUST click "Allow" to use the microphone.</li>
+                <li><strong>Setup:</strong> Select your specific instrument from the dropdown menu below. Use the "Tuner Mode" to check your slide/mouthpiece before racing!</li>
+                <li><strong>Target Note:</strong> Use the <strong>&lt;</strong> and <strong>&gt;</strong> buttons to choose the note you want to practice.</li>
+                <li><strong>Difficulty:</strong> Use the <strong>&lt;</strong> and <strong>&gt;</strong> buttons to change your allowed tuning range (2c PRO to 25c TRAINING). Higher difficulty = more points!</li>
+                <li><strong>Ignition:</strong> Play a steady note into the mic to start your engine. Your air is the fuel!</li>
+                <li><strong>The Goal:</strong> Keep your pitch perfectly in tune to build your bonus multiplier and speed up.</li>
+                <li><strong>The Danger:</strong> If you play out of tune, heavy traffic will spawn. Steer into the safe lanes to avoid crashing!</li>
+            </ul>
+            <button class="close-help" id="close-help-btn">CLOSE HELP</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { PitchDetector } from "https://esm.sh/pitchy@4";
+
+        // Dismiss Splash Screen
+        document.getElementById('dismiss-splash-btn').addEventListener('click', () => {
+            document.getElementById('welcome-splash').style.display = 'none';
+        });
+
+        const instrumentData = {
+            "concert": { offset: 0, diag: "" },
+            "alto_sax": { offset: 9, diag: "Adjust Mouthpiece on Neck Cork.\n(Mouthpiece + Neck = Written F / Concert Ab)" },
+            "baritone_bc": { offset: 0, diag: "Adjust Main Tuning Slide.\n(Norm: 1/2\" to 1\" out. If more, check embouchure!)" },
+            "baritone_tc": { offset: 2, diag: "Adjust Main Tuning Slide.\n(Norm: 1/2\" to 1\" out. If more, check embouchure!)" },
+            "bari_sax": { offset: 9, diag: "Adjust Mouthpiece on Neck Cork.\n(Mouthpiece + Neck = Written B / Concert D)" },
+            "bass_clarinet": { offset: 2, diag: "Adjust Neck/Mouthpiece." },
+            "bassoon": { offset: 0, diag: "Adjust embouchure pressure / reed placement." },
+            "clarinet": { offset: 2, diag: "Adjust Barrel.\n(Mouthpiece + Barrel = Written G# / Concert F#)" },
+            "flute": { offset: 0, diag: "Adjust Headjoint." },
+            "horn": { offset: 7, diag: "Adjust Main Tuning Slide." },
+            "oboe": { offset: 0, diag: "Adjust embouchure pressure / reed placement." },
+            "tenor_sax": { offset: 2, diag: "Adjust Mouthpiece on Neck Cork.\n(Mouthpiece + Neck = Written F# / Concert E)" },
+            "trombone": { offset: 0, diag: "Adjust Main Tuning Slide.\n(Norm: 1/2\" to 1\" out. If more, check embouchure!)" },
+            "trumpet": { offset: 2, diag: "Adjust Main Tuning Slide.\n(Norm: 1/4\" to 1/2\" out. If more, check embouchure/voicing!)" },
+            "tuba": { offset: 0, diag: "Adjust Main Tuning Slide.\n(Norm: 1\" to 2\" out. If more, drop your jaw!)" }
+        };
+
+        const DIFFICULTY_TIERS = [2, 5, 10, 15, 20, 25];
+        let dangerZoneCents = 15; 
+        let globalSpeedMult = 1.0;      
+        
+        function getDifficultyName(cents) {
+            if (cents <= 2) return "PRO";
+            if (cents <= 5) return "ADVANCED";
+            if (cents <= 10) return "INTERMEDIATE";
+            if (cents <= 15) return "NOVICE";
+            if (cents <= 20) return "BEGINNER";
+            return "TRAINING";
+        }
+
+        function getBasePoints(cents) {
+            if (cents <= 2) return 50;  
+            if (cents <= 5) return 20;  
+            if (cents <= 10) return 15; 
+            if (cents <= 15) return 10; 
+            if (cents <= 20) return 5;  
+            return 1;                   
+        }
+        
+        const STABILITY_VARIANCE = 10; 
+        const BASE_WORLD_SPEED = 10;    
+        const BASE_ROAD_SPEED = 16;     
+        const SWERVE_AGILITY = 0.12;    
+        const GRACE_PERIOD_FRAMES = 120; 
+        const WARNING_TIME_FRAMES = 90; 
+        let airTank = 100;               
+        
+        const GATE_DISTANCE = 400; 
+        
+        const MULT_COLORS = ['#00ffcc', '#00ff00', '#ffff00', '#ffaa00', '#ff0055', '#ff0000', '#aa00ff', '#0055ff'];
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const centerY = canvas.height / 2;
+        const laneHeight = canvas.height / 3; 
+
+        let audioContext, analyserNode, detector, micStream;
+        let isEngineRunning = false;
+        
+        let pitchHistory = [], score = 0, multiplier = 1;
+        let isTurnActive = false, turnFailed = false, isPaused = false, mode = 'game', targetNoteNum = 70;
+        let appMode = 'race'; 
+        
+        let transpositionOffset = 0; 
+        let currentDiagnostic = "";
+
+        let topScores = [];
+        let activeFrames = 0;
+
+        let previousSparking = true;
+        let exhaustBurstTimer = 0;
+        let speedLines = [];
+
+        let player = { x: 100, y: centerY, targetY: centerY, width: 55, height: 22, color: '#00ccff', trailColor: MULT_COLORS[0], isSparking: false, history: [] };
+        let obstacles = [], gates = [], distanceTraveled = 0, nextGateDistance = GATE_DISTANCE, hazardCooldown = 0, ghostCooldown = 0;
+        let roadMarkings = [0, 200, 400, 600, 800]; 
+        let particles = [];
+
+        const noteStrings = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
+        function getNoteName(noteNum) { return noteStrings[((noteNum % 12) + 12) % 12]; }
+        function pitchToNote(frequency) { return Math.round(12 * (Math.log(frequency / 440) / Math.log(2))) + 69; }
+        function getCentsOff(frequency, noteNum) {
+            const expectedFreq = 440 * Math.pow(2, (noteNum - 69) / 12);
+            return Math.floor(1200 * Math.log(frequency / expectedFreq) / Math.log(2));
+        }
+
+        function updateTargetNoteDisplay() {
+            document.getElementById('target-note-display').innerText = getNoteName(targetNoteNum + transpositionOffset);
+            if (transpositionOffset !== 0) {
+                document.getElementById('target-concert-display').innerText = `(Concert ${getNoteName(targetNoteNum)})`;
+            } else {
+                document.getElementById('target-concert-display').innerText = "";
+            }
+        }
+        
+        function updateDifficultyDisplay() {
+            document.getElementById('difficulty-display').innerText = dangerZoneCents;
+            document.getElementById('difficulty-name-display').innerText = getDifficultyName(dangerZoneCents);
+        }
+
+        document.getElementById('inst-select').addEventListener('change', (e) => {
+            const instKey = e.target.value;
+            transpositionOffset = instrumentData[instKey].offset;
+            currentDiagnostic = instrumentData[instKey].diag;
+            updateTargetNoteDisplay();
+        });
+
+        document.getElementById('app-mode-btn').addEventListener('click', (e) => {
+            appMode = appMode === 'race' ? 'tuner' : 'race';
+            e.target.innerText = `MODE: ${appMode.toUpperCase()}`;
+            document.getElementById('score-board').style.display = appMode === 'race' ? 'flex' : 'none';
+            airTank = 100; 
+            obstacles = []; gates = []; distanceTraveled = 0;
+        });
+
+        document.getElementById('btn-target-down').addEventListener('click', () => { targetNoteNum--; updateTargetNoteDisplay(); });
+        document.getElementById('btn-target-up').addEventListener('click', () => { targetNoteNum++; updateTargetNoteDisplay(); });
+
+        document.getElementById('btn-diff-down').addEventListener('click', () => { 
+            let idx = DIFFICULTY_TIERS.indexOf(dangerZoneCents);
+            if (idx > 0) { dangerZoneCents = DIFFICULTY_TIERS[idx - 1]; updateDifficultyDisplay(); }
+        });
+        document.getElementById('btn-diff-up').addEventListener('click', () => { 
+            let idx = DIFFICULTY_TIERS.indexOf(dangerZoneCents);
+            if (idx < DIFFICULTY_TIERS.length - 1) { dangerZoneCents = DIFFICULTY_TIERS[idx + 1]; updateDifficultyDisplay(); }
+        });
+
+        document.getElementById('help-btn').addEventListener('click', () => document.getElementById('help-modal').style.display = 'flex');
+        document.getElementById('close-help-btn').addEventListener('click', () => document.getElementById('help-modal').style.display = 'none');
+
+        async function populateMicList() {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const inputs = devices.filter(d => d.kind === 'audioinput');
+                const select = document.getElementById('mic-select');
+                select.innerHTML = '';
+                inputs.forEach(d => {
+                    const opt = document.createElement('option');
+                    opt.value = d.deviceId; opt.text = d.label || `Mic ${select.length + 1}`;
+                    select.appendChild(opt);
+                });
+            } catch (e) { console.log("Mic access not granted yet."); }
+        }
+
+        async function startAudioStream() {
+            const deviceId = document.getElementById('mic-select').value;
+            if (micStream) micStream.getTracks().forEach(t => t.stop());
+            
+            audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+            if (audioContext.state === 'suspended') await audioContext.resume();
+            
+            analyserNode = audioContext.createAnalyser();
+            detector = PitchDetector.forFloat32Array(analyserNode.fftSize);
+            
+            let audioOptions = { echoCancellation: false, autoGainControl: false, noiseSuppression: false, channelCount: 1 };
+            if (deviceId && deviceId !== "Loading Mics...") { audioOptions.deviceId = { exact: deviceId }; }
+            const constraints = { audio: audioOptions };
+            
+            try {
+                micStream = await navigator.mediaDevices.getUserMedia(constraints);
+                audioContext.createMediaStreamSource(micStream).connect(analyserNode);
+                document.getElementById('start-btn').innerText = "RESTART AUDIO";
+                
+                if (!isEngineRunning) {
+                    isEngineRunning = true;
+                    requestAnimationFrame(gameLoop);
+                }
+            } catch(e) { 
+                if (e.name === 'NotAllowedError' || (e.message && e.message.toLowerCase().includes('permission denied'))) {
+                    alert("MIC BLOCKED: Please check the URL bar for a Padlock or crossed-out camera icon, click it, and change Microphone to 'Allow'!");
+                } else {
+                    alert("Mic Error: " + e.message); 
+                }
+            }
+        }
+
+        document.getElementById('start-btn').addEventListener('click', startAudioStream);
+        document.getElementById('toggle-mic-btn').addEventListener('click', () => document.getElementById('left-panel').classList.toggle('hidden-panel'));
+        document.getElementById('sens-slider').addEventListener('input', (e) => { document.getElementById('sens-display').innerText = parseFloat(e.target.value).toFixed(1); });
+        document.getElementById('speed-slider').addEventListener('input', (e) => { globalSpeedMult = parseFloat(e.target.value); document.getElementById('speed-display').innerText = parseFloat(e.target.value).toFixed(1); });
+
+        function endRound(reason) {
+            if (turnFailed) return; 
+            turnFailed = true;
+            
+            if(score > 0) { topScores.push(score); topScores.sort((a,b)=>b-a); topScores = topScores.slice(0,3); }
+            const list = document.getElementById('top-scores-list');
+            list.innerHTML = ''; topScores.forEach(s => { 
+                let li = document.createElement('li'); li.innerText = s; 
+                li.style.background = "#21262d"; li.style.margin = "4px 0"; li.style.padding = "4px"; li.style.borderRadius = "4px";
+                list.appendChild(li); 
+            });
+
+            document.getElementById('hud-normal-view').style.display = 'none';
+            document.getElementById('hud-feedback-view').style.display = 'block';
+            const fb = document.getElementById('feedback-display');
+            
+            if (reason === 'stop') {
+                fb.innerText = (score > 0 && score >= (topScores[0] || 0)) ? "NEW HIGH SCORE!" : "CLEAN RUN!"; 
+                fb.style.color = "#00ffcc"; if (score > 0 && score >= (topScores[0] || 0)) fb.classList.add('high-score-text');
+            } else { 
+                fb.innerText = "CRASH!"; fb.style.color = "#ff0000"; 
+            }
+            
+            setTimeout(() => {
+                score = 0; multiplier = 1; distanceTraveled = 0; 
+                obstacles = []; gates = []; player.history = []; particles = []; speedLines = [];
+                nextGateDistance = GATE_DISTANCE;
+                player.x = 100; player.y = centerY; player.targetY = centerY; player.trailColor = MULT_COLORS[0]; 
+                player.isSparking = false; previousSparking = true; exhaustBurstTimer = 0;
+                turnFailed = false; isTurnActive = false; airTank = 100; activeFrames = 0; pitchHistory = [];
+                
+                document.getElementById('hud-feedback-view').style.display = 'none';
+                document.getElementById('hud-normal-view').style.display = 'flex';
+                fb.classList.remove('high-score-text');
+                document.getElementById('score-val').innerText = "0";
+                updateMultiplierHUD();
+                document.getElementById('pitch-display').innerText = "--";
+                document.getElementById('cents-display').innerText = "--";
+                document.getElementById('pitch-concert-display').innerText = "";
+                document.getElementById('air-display').innerText = "100%";
+            }, 2000);
+        }
+
+        function updateMultiplierHUD() {
+            let multFloor = Math.floor(multiplier);
+            let colorIndex = (multFloor - 1) % MULT_COLORS.length;
+            let color = MULT_COLORS[colorIndex];
+            let display = document.getElementById('mult-display');
+            display.innerText = multFloor + "x BONUS"; display.style.color = color; display.style.borderColor = color;
+            player.trailColor = color; 
+        }
+
+        window.addEventListener('keydown', (e) => {
+            const key = e.key.toUpperCase();
+            if (e.code === 'Space') { e.preventDefault(); isPaused = !isPaused; return; }
+            if (key === 'S') document.getElementById('left-panel').classList.toggle('hidden-panel');
+            
+            if (e.key === 'ArrowLeft') {
+                let idx = DIFFICULTY_TIERS.indexOf(dangerZoneCents);
+                if (idx > 0) { dangerZoneCents = DIFFICULTY_TIERS[idx - 1]; updateDifficultyDisplay(); }
+            }
+            if (e.key === 'ArrowRight') {
+                let idx = DIFFICULTY_TIERS.indexOf(dangerZoneCents);
+                if (idx < DIFFICULTY_TIERS.length - 1) { dangerZoneCents = DIFFICULTY_TIERS[idx + 1]; updateDifficultyDisplay(); }
+            }
+            
+            if (key === 'T') { mode = mode === 'practice' ? 'game' : 'practice'; document.getElementById('mode-display').innerText = mode.toUpperCase(); }
+            if (mode === 'game') {
+                if (e.key === 'ArrowUp') { targetNoteNum++; updateTargetNoteDisplay(); }
+                if (e.key === 'ArrowDown') { targetNoteNum--; updateTargetNoteDisplay(); }
+                const noteMap = { 'C': 60, 'D': 62, 'E': 64, 'F': 65, 'G': 67, 'A': 69, 'B': 71 };
+                if (noteMap[key]) { targetNoteNum = noteMap[key] - transpositionOffset; updateTargetNoteDisplay(); }
+            }
+        });
+
+        let smoothCents = 0; 
+        let stable = false;
+
+        function gameLoop() {
+            if (isPaused || turnFailed) { requestAnimationFrame(gameLoop); return; }
+
+            const input = new Float32Array(detector.inputLength);
+            analyserNode.getFloatTimeDomainData(input);
+            let sum = 0; for (const a of input) sum += a * a;
+            let vol = Math.sqrt(sum / input.length) * 100;
+            
+            const [pitch, clarity] = detector.findPitch(input, audioContext.sampleRate);
+            const sens = parseFloat(document.getElementById('sens-slider').value);
+
+            let currentWorldSpeed = BASE_WORLD_SPEED * globalSpeedMult;
+            let currentRoadSpeed = BASE_ROAD_SPEED * globalSpeedMult;
+
+            if (vol > sens && clarity > 0.30 && pitch > 50) {
+                isTurnActive = true; 
+                
+                if (appMode === 'race') {
+                    airTank = Math.min(100, airTank + 5); 
+                    activeFrames++;
+                }
+                
+                document.getElementById('mic-status-dot').style.backgroundColor = '#00ff00';
+                
+                let ref = (mode === 'practice' || appMode === 'tuner') ? pitchToNote(pitch) : (() => {
+                    let t = targetNoteNum % 12, d = pitchToNote(pitch), c = t + (Math.floor(d / 12) * 12);
+                    if (Math.abs(c + 12 - d) < Math.abs(c - d)) c += 12; else if (Math.abs(c - 12 - d) < Math.abs(c - d)) c -= 12; return c;
+                })();
+                
+                let rawCents = getCentsOff(pitch, ref) || 0;
+                
+                pitchHistory.push(rawCents); 
+                if (pitchHistory.length > 10) pitchHistory.shift();
+                smoothCents = pitchHistory.reduce((a, b) => a + b, 0) / pitchHistory.length;
+
+                let isWrongNote = Math.abs(smoothCents) > 100;
+                document.getElementById('pitch-display').innerText = getNoteName(ref + transpositionOffset);
+                document.getElementById('cents-display').innerText = isWrongNote ? "WRONG NOTE" : (smoothCents > 0 ? "+" : "") + Math.round(smoothCents);
+                
+                if (transpositionOffset !== 0 && !isWrongNote) {
+                    document.getElementById('pitch-concert-display').innerText = `(Concert ${getNoteName(ref)})`;
+                } else {
+                    document.getElementById('pitch-concert-display').innerText = "";
+                }
+                
+                stable = pitchHistory.length === 10 && (Math.max(...pitchHistory) - Math.min(...pitchHistory) <= STABILITY_VARIANCE);
+                
+                if (Math.abs(smoothCents) < dangerZoneCents && stable) {
+                    if (appMode === 'race') multiplier += (0.015 * globalSpeedMult); 
+                    player.isSparking = false;
+                } else {
+                    if (appMode === 'race') multiplier = 1; 
+                    player.isSparking = true;
+                }
+                updateMultiplierHUD();
+
+                if (!player.isSparking && previousSparking) exhaustBurstTimer = 25;
+                previousSparking = player.isSparking;
+
+                let surgeFactor = 1 - Math.pow(0.75, multiplier - 1);
+                let targetX = 100 + (600 * surgeFactor); 
+                player.x += (targetX - player.x) * 0.03; 
+
+                let pixelsPerCent = (laneHeight / 2) / dangerZoneCents;
+                player.targetY = centerY - (smoothCents * pixelsPerCent);
+                
+                if (appMode === 'race' && activeFrames > GRACE_PERIOD_FRAMES && mode === 'game') {
+                    if (hazardCooldown > 0) hazardCooldown--;
+                    if (ghostCooldown > 0) ghostCooldown--;
+                    
+                    let targetFrames = WARNING_TIME_FRAMES / globalSpeedMult;
+                    let independentSpeed = (800 - player.x) / targetFrames; 
+
+                    if (hazardCooldown <= 0 && Math.abs(smoothCents) >= dangerZoneCents) {
+                        obstacles.push({ x: 800, y: smoothCents > 0 ? 5 : 2*laneHeight + 15, w: 55, h: laneHeight-20, s: independentSpeed, type: 'hazard', isSharp: smoothCents > 0 });
+                        hazardCooldown = targetFrames * 1.2; 
+                    }
+
+                    if (ghostCooldown <= 0 && Math.abs(smoothCents) < dangerZoneCents) {
+                        let isTopLane = Math.random() > 0.5;
+                        obstacles.push({ x: 800, y: isTopLane ? 5 : 2*laneHeight + 15, w: 50, h: laneHeight - 20, s: independentSpeed * 0.85, type: 'ghost' });
+                        ghostCooldown = targetFrames * 2.5; 
+                    }
+                }
+            } else {
+                document.getElementById('mic-status-dot').style.backgroundColor = '#ff0000';
+                stable = false; 
+                
+                if (isTurnActive && appMode === 'race') {
+                    airTank -= 3; 
+                    if (airTank <= 0) {
+                        endRound('stop');
+                    } else if (airTank < 80) {
+                        player.targetY = canvas.height; 
+                        multiplier = 1; player.isSparking = true; updateMultiplierHUD();
+                    }
+                } else {
+                    isTurnActive = false; 
+                }
+            }
+
+            document.getElementById('air-display').innerText = Math.max(0, Math.floor(airTank)) + "%";
+
+            // --- CANVAS DRAWING ---
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (appMode === 'tuner') {
+                
+                ctx.fillStyle = '#ffaa00';
+                ctx.font = 'bold 20px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillText("FLAT (Too Low) = Push IN   |   SHARP (Too High) = Pull OUT", canvas.width / 2, 25);
+
+                ctx.fillStyle = '#00ffcc';
+                ctx.font = '16px Courier New';
+                let diagLines = currentDiagnostic.split('\n');
+                if (diagLines.length > 1) {
+                    ctx.fillText(diagLines[0], canvas.width / 2, canvas.height - 25);
+                    ctx.fillText(diagLines[1], canvas.width / 2, canvas.height - 8);
+                } else {
+                    ctx.fillText(diagLines[0], canvas.width / 2, canvas.height - 15);
+                }
+                ctx.textAlign = 'left'; 
+
+                let lightX = 100; let lightY = 130; let lightR = 25;
+                ctx.beginPath();
+                ctx.arc(lightX, lightY, lightR, 0, Math.PI * 2);
+                if (isTurnActive) {
+                    if (stable) {
+                        ctx.fillStyle = '#00ff00'; ctx.shadowBlur = 20; ctx.shadowColor = '#00ff00';
+                    } else {
+                        ctx.fillStyle = '#ff0033'; ctx.shadowBlur = 20; ctx.shadowColor = '#ff0033';
+                    }
+                } else {
+                    ctx.fillStyle = '#333'; ctx.shadowBlur = 0;
+                }
+                ctx.fill(); ctx.shadowBlur = 0;
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+                
+                ctx.fillStyle = '#fff'; ctx.font = 'bold 14px Courier New'; ctx.textAlign = 'center';
+                ctx.fillText("TONE", lightX, lightY + 45);
+                ctx.fillText("STABILITY", lightX, lightY + 60);
+
+                let legX = 610; let legY = 80;
+                ctx.textAlign = 'left';
+                ctx.fillStyle = '#fff'; ctx.font = 'bold 16px Courier New'; ctx.fillText("SKILL TIERS", legX, legY);
+                ctx.font = '14px Courier New';
+                ctx.fillStyle = '#00ffcc'; ctx.fillText("± 2c : PRO", legX, legY + 25);
+                ctx.fillStyle = '#00ff00'; ctx.fillText("± 5c : ADVANCED", legX, legY + 45);
+                ctx.fillStyle = '#aaff00'; ctx.fillText("± 10c: INTERMEDIATE", legX, legY + 65);
+                ctx.fillStyle = '#ffaa00'; ctx.fillText("± 15c: NOVICE", legX, legY + 85);
+                ctx.fillStyle = '#ff5555'; ctx.fillText("± 20c: BEGINNER", legX, legY + 105);
+                ctx.fillStyle = '#ff0000'; ctx.fillText("± 25c: TRAINING", legX, legY + 125);
+                
+                let evalCents = isTurnActive ? Math.abs(smoothCents) : dangerZoneCents;
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+                ctx.strokeRect(legX - 5, legY + 10 + (
+                    evalCents <= 2 ? 0 : 
+                    evalCents <= 5 ? 20 : 
+                    evalCents <= 10 ? 40 : 
+                    evalCents <= 15 ? 60 : 
+                    evalCents <= 20 ? 80 : 100
+                ), 190, 20);
+
+                let tuneX = canvas.width / 2;
+                let pixelsPerCent = 2.0; 
+                let scaleH = 100; 
+
+                let dzPixels = evalCents * pixelsPerCent;
+                ctx.fillStyle = 'rgba(0, 255, 204, 0.15)';
+                if(evalCents <= 50) { 
+                    ctx.fillRect(tuneX - 40, centerY - dzPixels, 80, dzPixels * 2);
+                }
+
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(tuneX - 15, centerY - 2, 30, 4);
+
+                ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 6; ctx.lineCap = 'round';
+                ctx.beginPath(); ctx.moveTo(tuneX, centerY - scaleH); ctx.lineTo(tuneX, centerY + scaleH); ctx.stroke();
+
+                const tickMarks = [50, 30, 25, 20, 15, 10, 5, 2];
+                ctx.textAlign = 'right';
+                
+                tickMarks.forEach(c => {
+                    let offset = c * pixelsPerCent;
+                    ctx.strokeStyle = (c === 50 || c === 30 || c === 25 || c === 15) ? '#ffffff' : '#aaaaaa';
+                    ctx.lineWidth = (c === 50 || c === 30 || c === 25 || c === 15) ? 2 : 1;
+                    
+                    ctx.beginPath(); ctx.moveTo(tuneX - 10, centerY - offset); ctx.lineTo(tuneX + 10, centerY - offset); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(tuneX - 10, centerY + offset); ctx.lineTo(tuneX + 10, centerY + offset); ctx.stroke();
+                    
+                    if (c !== 2) {
+                        ctx.fillStyle = '#ffffff';
+                        ctx.font = (c === 50 || c === 30 || c === 25) ? 'bold 14px Courier New' : '11px Courier New';
+                        ctx.fillText("+" + c, tuneX - 15, centerY - offset + 4);
+                        ctx.fillText("-" + c, tuneX - 15, centerY + offset + 4);
+                    }
+                });
+                
+                ctx.fillStyle = '#fff'; ctx.font = 'bold 16px Courier New';
+                ctx.fillText("0", tuneX - 25, centerY + 5);
+
+                if (isTurnActive) {
+                    let displayCents = Math.max(-55, Math.min(55, smoothCents)); 
+                    let needleY = centerY - (displayCents * pixelsPerCent);
+                    
+                    let needleColor = '#ff0000'; 
+                    let absCents = Math.abs(smoothCents);
+                    if (absCents <= 2) needleColor = '#00ffcc';
+                    else if (absCents <= 5) needleColor = '#00ff00';
+                    else if (absCents <= 10) needleColor = '#aaff00';
+                    else if (absCents <= 15) needleColor = '#ffaa00';
+                    else if (absCents <= 20) needleColor = '#ff5555';
+                    
+                    ctx.strokeStyle = needleColor;
+                    ctx.lineWidth = 6;
+                    ctx.shadowBlur = 15; ctx.shadowColor = ctx.strokeStyle;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(tuneX - 35, needleY);
+                    ctx.lineTo(tuneX + 35, needleY);
+                    ctx.stroke();
+                    ctx.shadowBlur = 0;
+                }
+
+            } else {
+                
+                ctx.strokeStyle = '#0088ff'; ctx.lineWidth = 6; ctx.shadowBlur = 15; ctx.shadowColor = '#00aaff'; 
+                ctx.beginPath(); ctx.moveTo(0, laneHeight); ctx.lineTo(800, laneHeight); 
+                ctx.moveTo(0, 2 * laneHeight); ctx.lineTo(800, 2 * laneHeight); 
+                ctx.stroke(); ctx.shadowBlur = 0; 
+                
+                ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 5; ctx.setLineDash([50, 90]); 
+                ctx.shadowBlur = 10; ctx.shadowColor = '#00ffcc';
+                roadMarkings.forEach((m, i) => {
+                    if (isTurnActive || airTank < 100) roadMarkings[i] -= currentRoadSpeed; 
+                    if (roadMarkings[i] < -100) roadMarkings[i] = 900;
+                    let rx = roadMarkings[i];
+                    ctx.beginPath(); 
+                    ctx.moveTo(rx, laneHeight/2); ctx.lineTo(rx-80, laneHeight/2);
+                    ctx.moveTo(rx, centerY); ctx.lineTo(rx-80, centerY);
+                    ctx.moveTo(rx, 2.5*laneHeight); ctx.lineTo(rx-80, 2.5*laneHeight);
+                    ctx.stroke();
+                });
+                ctx.setLineDash([]); ctx.shadowBlur = 0;
+
+                if (isTurnActive || (airTank > 0 && airTank < 100)) {
+                    
+                    player.y += (player.targetY - player.y) * SWERVE_AGILITY;
+                    player.y = Math.max(player.height/2 + 5, Math.min(canvas.height - player.height/2 - 5, player.y));
+
+                    player.history.unshift({x: player.x, y: player.y});
+                    if (player.history.length > 50) player.history.pop(); 
+
+                    distanceTraveled += currentWorldSpeed;
+                    if (distanceTraveled > nextGateDistance) { 
+                        gates.push({ x: 800, p: false }); nextGateDistance += GATE_DISTANCE; 
+                    }
+
+                    if (!player.isSparking && Math.random() > 0.4) {
+                        speedLines.push({ x: 800, y: Math.random() * canvas.height, length: 50 + Math.random() * 100, speed: currentWorldSpeed + 5 + Math.random() * 10 });
+                    }
+                    ctx.strokeStyle = 'rgba(0, 255, 204, 0.4)'; ctx.lineWidth = 2;
+                    for (let i = speedLines.length - 1; i >= 0; i--) {
+                        let sl = speedLines[i]; sl.x -= sl.speed;
+                        ctx.beginPath(); ctx.moveTo(sl.x, sl.y); ctx.lineTo(sl.x + sl.length, sl.y); ctx.stroke();
+                        if (sl.x < -200) speedLines.splice(i, 1);
+                    }
+
+                    obstacles.forEach(o => {
+                        o.x -= o.s; 
+                        
+                        ctx.fillStyle = o.type === 'hazard' ? '#ff0033' : '#ff7700'; 
+                        ctx.shadowBlur = 10; ctx.shadowColor = ctx.fillStyle;
+                        
+                        ctx.beginPath();
+                        ctx.moveTo(o.x - 10, o.y + o.h / 2);    
+                        ctx.lineTo(o.x + 20, o.y);              
+                        ctx.lineTo(o.x + o.w, o.y);             
+                        ctx.lineTo(o.x + o.w, o.y + o.h);       
+                        ctx.lineTo(o.x + 20, o.y + o.h);        
+                        ctx.closePath();
+                        ctx.fill(); ctx.shadowBlur = 0;
+                        
+                        ctx.fillStyle = '#ffaa00'; ctx.fillRect(o.x + o.w, o.y + 15, 6, o.h - 30);
+                        
+                        ctx.fillStyle = o.type === 'hazard' ? '#ff0033' : '#ff7700';
+                        ctx.fillRect(o.x + 20, o.y + o.h, 15, 4);
+                        ctx.fillRect(o.x + o.w - 20, o.y + o.h, 15, 4);
+                        
+                        if (o.type === 'hazard') {
+                            ctx.fillStyle = '#ffffff'; ctx.font = "bold 28px Courier New";
+                            ctx.fillText(o.isSharp ? "#" : "b", o.x + 25, o.y + (o.h / 2) + 10);
+                        }
+                        
+                        if (player.x < o.x + o.w && player.x + player.width > o.x && player.y-11 < o.y + o.h && player.y+11 > o.y) {
+                            endRound('crash');
+                        }
+                    });
+                    obstacles = obstacles.filter(o => o.x > -60);
+
+                    if (player.isSparking) { particles.push({ x: player.x, y: player.y + (Math.random()*14 - 7), life: 30 }); }
+                    ctx.fillStyle = '#999';
+                    particles.forEach((p, i) => {
+                        p.x -= currentWorldSpeed * 1.5; p.life--;
+                        ctx.globalAlpha = p.life / 30; ctx.fillRect(p.x, p.y, 8, 8);
+                    });
+                    ctx.globalAlpha = 1.0; particles = particles.filter(p => p.life > 0);
+
+                    ctx.lineWidth = 4;
+                    let currentMultFloor = Math.floor(multiplier);
+                    ctx.strokeStyle = MULT_COLORS[(currentMultFloor - 1) % MULT_COLORS.length];
+                    
+                    gates.forEach(g => { 
+                        g.x -= currentWorldSpeed; 
+                        ctx.shadowBlur = 10; ctx.shadowColor = ctx.strokeStyle;
+                        ctx.beginPath(); ctx.moveTo(g.x, 0); ctx.lineTo(g.x, canvas.height); ctx.stroke();
+                        ctx.shadowBlur = 0;
+                       if (!g.p && g.x < player.x) { 
+                         g.p = true; 
+                         if (airTank > 80) { 
+                             let basePts = getBasePoints(dangerZoneCents);
+                             score += (basePts * currentMultFloor); 
+                             document.getElementById('score-val').innerText = score; 
+                         }
+                       }
+                    });
+                    gates = gates.filter(g => g.x > -20);
+
+                    if (exhaustBurstTimer > 0) exhaustBurstTimer--;
+                    let baseFlame = (!player.isSparking) ? 40 + (multiplier * 10) : 15;
+                    if (exhaustBurstTimer > 0) baseFlame += 50; 
+                    let actualFlame = baseFlame + (Math.random() * 20);
+                    let flameColor = (!player.isSparking) ? player.trailColor : '#ffaa00'; 
+
+                    ctx.fillStyle = flameColor;
+                    ctx.shadowBlur = 20; ctx.shadowColor = flameColor;
+                    ctx.beginPath(); ctx.moveTo(player.x, player.y - 7); ctx.lineTo(player.x - actualFlame, player.y); ctx.lineTo(player.x, player.y + 7); 
+                    ctx.fill(); ctx.shadowBlur = 0;
+
+                    ctx.fillStyle = player.color; 
+                    ctx.shadowBlur = (player.isSparking ? 0 : 15); ctx.shadowColor = player.trailColor;
+                    ctx.beginPath();
+                    ctx.moveTo(player.x + player.width, player.y + 11); ctx.lineTo(player.x + player.width + 10, player.y); 
+                    ctx.lineTo(player.x + 35, player.y - 11); ctx.lineTo(player.x, player.y - 11); ctx.lineTo(player.x, player.y + 11);                
+                    ctx.closePath(); ctx.fill(); ctx.shadowBlur = 0;
+
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath(); ctx.moveTo(player.x + 2, player.y - 2); ctx.lineTo(player.x + 35, player.y - 2);
+                    ctx.lineTo(player.x + 40, player.y + 2); ctx.lineTo(player.x + 2, player.y + 2); ctx.fill();
+
+                    ctx.shadowBlur = 10; ctx.shadowColor = '#00ffcc'; ctx.fillStyle = '#00ffcc';
+                    ctx.fillRect(player.x + 5, player.y + 11, 15, 4); ctx.fillRect(player.x + 30, player.y + 11, 15, 4); ctx.shadowBlur = 0;
+
+                } else if (airTank === 100) {
+                    ctx.fillStyle = "#fff"; ctx.font = "bold 24px Courier New"; 
+                    ctx.fillText("REV ENGINE TO START", 260, canvas.height / 2);
+                    
+                    ctx.fillStyle = player.color; ctx.beginPath();
+                    ctx.moveTo(player.x + player.width, player.y + 11); ctx.lineTo(player.x + player.width + 10, player.y); 
+                    ctx.lineTo(player.x + 35, player.y - 11); ctx.lineTo(player.x, player.y - 11); ctx.lineTo(player.x, player.y + 11);                
+                    ctx.closePath(); ctx.fill();
+
+                    ctx.fillStyle = '#fff'; ctx.beginPath();
+                    ctx.moveTo(player.x + 2, player.y - 2); ctx.lineTo(player.x + 35, player.y - 2);
+                    ctx.lineTo(player.x + 40, player.y + 2); ctx.lineTo(player.x + 2, player.y + 2); ctx.fill();
+                }
+            } 
+
+            requestAnimationFrame(gameLoop);
+        }
+        
+        updateDifficultyDisplay();
+        updateTargetNoteDisplay();
+        populateMicList();
+    </script>
+</body>
+</html>
