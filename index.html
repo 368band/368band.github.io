@@ -58,7 +58,7 @@
     <div id="welcome-splash">
         <h1 style="color:#00ffcc; font-size: 4rem; margin-bottom: 10px; letter-spacing: 5px;">SLIPSTREAM</h1>
         <h2 style="color:#ffaa00; margin-top: 0; font-size: 2rem;">MICROPHONE REQUIRED</h2>
-        <p style="font-size: 1.2rem; max-width: 600px; line-height: 1.6; color: #c9d1d9;">This app requires access to your microphone to hear your instrument. <br><br>When you click "Initialize Audio" on the next screen, your browser will ask for permission. You must click <b>Allow</b> to play!</p>
+        <p style="font-size: 1.2rem; max-width: 600px; line-height: 1.6; color: #c9d1d9;">This app requires access to your microphone to hear your instrument. <br><br>When you click "Initialize Audio" on the next screen, your browser will ask for permission. You must click <b>Allow</b> to play!<br><br><span style="color:#ffaa00; font-size: 1rem;">Note: If your engine won't start when you play, click the SETTINGS button to adjust your Mic Sensitivity!</span></p>
         <button class="splash-btn" id="dismiss-splash-btn">PROCEED TO GAME</button>
     </div>
 
@@ -104,10 +104,6 @@
             <div style="font-size:0.7rem; color:#888;">MIC SENS:</div>
             <input type="range" id="sens-slider" min="0.1" max="10.0" step="0.1" value="0.5">
             <div style="color:#00ffcc; font-weight:bold; font-size:0.9rem;"><span id="sens-display">0.5</span></div>
-            <hr style="border:0; border-top:1px solid #444; margin:10px 0;">
-            <div style="font-size:0.7rem; color:#888;">SPEED:</div>
-            <input type="range" id="speed-slider" min="0.5" max="2.5" step="0.1" value="1.0">
-            <div style="color:#00ffcc; font-weight:bold; font-size:0.9rem;"><span id="speed-display">1.0</span>x</div>
         </div>
         
         <canvas id="gameCanvas" width="800" height="300"></canvas>
@@ -153,12 +149,11 @@
             <h2>HOW TO PLAY SLIPSTREAM</h2>
             <ul>
                 <li><strong>Mic Permissions:</strong> When your browser asks, you MUST click "Allow" to use the microphone.</li>
-                <li><strong>Setup:</strong> Select your specific instrument from the dropdown menu below. Use the "Tuner Mode" to check your slide/mouthpiece before racing!</li>
+                <li><strong>Setup:</strong> Select your specific instrument from the dropdown menu. Use "Tuner Mode" to check your slide/mouthpiece before racing!</li>
+                <li><strong>Mic Sensitivity:</strong> If your engine won't start, click SETTINGS and lower the Mic Sens. If traffic spawns when you aren't playing, raise it!</li>
                 <li><strong>Target Note:</strong> Use the <strong>&lt;</strong> and <strong>&gt;</strong> buttons to choose the note you want to practice.</li>
-                <li><strong>Difficulty:</strong> Use the <strong>&lt;</strong> and <strong>&gt;</strong> buttons to change your allowed tuning range (2c PRO to 25c TRAINING). Higher difficulty = more points!</li>
+                <li><strong>Difficulty:</strong> Use the <strong>&lt;</strong> and <strong>&gt;</strong> buttons to change your allowed tuning range. Higher difficulty = more points!</li>
                 <li><strong>Ignition:</strong> Play a steady note into the mic to start your engine. Your air is the fuel!</li>
-                <li><strong>The Goal:</strong> Keep your pitch perfectly in tune to build your bonus multiplier and speed up.</li>
-                <li><strong>The Danger:</strong> If you play out of tune, heavy traffic will spawn. Steer into the safe lanes to avoid crashing!</li>
             </ul>
             <button class="close-help" id="close-help-btn">CLOSE HELP</button>
         </div>
@@ -192,7 +187,9 @@
 
         const DIFFICULTY_TIERS = [2, 5, 10, 15, 20, 25];
         let dangerZoneCents = 15; 
-        let globalSpeedMult = 1.0;      
+        
+        // LOCKED GLOBAL SPEED FOR FAIR LEADERBOARDS
+        const globalSpeedMult = 1.5;      
         
         function getDifficultyName(cents) {
             if (cents <= 2) return "PRO";
@@ -352,7 +349,6 @@
         document.getElementById('start-btn').addEventListener('click', startAudioStream);
         document.getElementById('toggle-mic-btn').addEventListener('click', () => document.getElementById('left-panel').classList.toggle('hidden-panel'));
         document.getElementById('sens-slider').addEventListener('input', (e) => { document.getElementById('sens-display').innerText = parseFloat(e.target.value).toFixed(1); });
-        document.getElementById('speed-slider').addEventListener('input', (e) => { globalSpeedMult = parseFloat(e.target.value); document.getElementById('speed-display').innerText = parseFloat(e.target.value).toFixed(1); });
 
         function endRound(reason) {
             if (turnFailed) return; 
